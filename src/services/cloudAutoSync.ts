@@ -71,11 +71,12 @@ export function triggerDebouncedCloudSync(
         localStorage.setItem(LAST_SYNCED_TIMESTAMP_KEY, time);
         onStatusChange?.('synced');
       } else {
-        onStatusChange?.('error', res.error);
+        // Handle token expiration or failure gracefully without spamming error toasts
+        onStatusChange?.('idle');
       }
     } catch (err: any) {
-      console.error('Auto sync error:', err);
-      onStatusChange?.('error', err.message);
+      console.warn('Auto sync skipped / session expired:', err?.message || err);
+      onStatusChange?.('idle');
     }
   }, 1800);
 }
@@ -110,12 +111,12 @@ export async function pullLatestFromCloud(
       onStatusChange?.('synced');
       return true;
     } else {
-      onStatusChange?.('synced');
+      onStatusChange?.('idle');
       return false;
     }
   } catch (err: any) {
-    console.error('Pull latest cloud error:', err);
-    onStatusChange?.('error', err.message);
+    console.warn('Pull latest cloud skipped / session expired:', err?.message || err);
+    onStatusChange?.('idle');
     return false;
   }
 }
