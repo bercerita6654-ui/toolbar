@@ -26,7 +26,7 @@ export interface StockSheetConfig {
   autoRefreshMinutes: number;
   lastSyncedAt: number | null;
   columnMapping?: {
-    skuCol: number;          // 1 (1-indexed)
+    skuCol: number;          // 1
     nameCol: number;         // 3
     unitCol: number;         // 4
     hppCol: number;          // 8
@@ -36,6 +36,24 @@ export interface StockSheetConfig {
     qtyCol: number;          // 15
   };
 }
+
+export interface CopyPriceSettings {
+  includeSkuName: boolean;
+  includeQty: boolean;
+  includeEceran: boolean;
+  includeGrosir: boolean;
+  includePartai: boolean;
+  includeHpp: boolean;
+}
+
+export const DEFAULT_COPY_SETTINGS: CopyPriceSettings = {
+  includeSkuName: true,
+  includeQty: true,
+  includeEceran: true,
+  includeGrosir: true,
+  includePartai: true,
+  includeHpp: false,
+};
 
 export const DEFAULT_STOCK_CONFIG: StockSheetConfig = {
   spreadsheetId: '1mrD9sQK_Sffa1X1fzlCDmaJXs1Yj2q-XTNdi2sRGPos',

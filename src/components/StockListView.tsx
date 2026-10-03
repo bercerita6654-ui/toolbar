@@ -1,10 +1,12 @@
 import React, { useState, useEffect, useMemo } from 'react';
-import { StockProduct, StockSheetConfig, DEFAULT_STOCK_CONFIG } from '../types/stock';
+import { StockProduct, StockSheetConfig, DEFAULT_STOCK_CONFIG, CopyPriceSettings } from '../types/stock';
 import { 
   fetchStockProductsFromSheet, 
   getStoredStockConfig, 
   saveStoredStockConfig, 
   getCachedStockProducts,
+  getStoredCopySettings,
+  saveStoredCopySettings,
   generateProductSnippet,
   generateProductHtmlSnippet,
   formatRupiah
@@ -21,13 +23,11 @@ import {
   AlertTriangle, 
   CheckCircle2, 
   XCircle, 
-  Layers, 
   SlidersHorizontal,
-  Cloud,
-  ChevronRight,
   Database,
   Tag,
-  Info
+  Info,
+  Settings2
 } from 'lucide-react';
 
 interface StockListViewProps {
@@ -45,15 +45,21 @@ export const StockListView: React.FC<StockListViewProps> = ({
 }) => {
   const [products, setProducts] = useState<StockProduct[]>(() => getCachedStockProducts());
   const [config, setConfig] = useState<StockSheetConfig>(() => getStoredStockConfig());
+  const [copySettings, setCopySettings] = useState<CopyPriceSettings>(() => getStoredCopySettings());
   const [isLoading, setIsLoading] = useState(false);
   const [search, setSearch] = useState('');
   const [statusFilter, setStatusFilter] = useState<'all' | 'in_stock' | 'low_stock' | 'out_of_stock'>('all');
   const [copiedSku, setCopiedSku] = useState<string | null>(null);
   const [copiedPriceKey, setCopiedPriceKey] = useState<string | null>(null);
   const [copiedAllId, setCopiedAllId] = useState<string | null>(null);
+
+  // Modals state
   const [showConfigModal, setShowConfigModal] = useState(false);
+  const [showCopySettingsModal, setShowCopySettingsModal] = useState(false);
   const [tempSpreadsheetId, setTempSpreadsheetId] = useState(config.spreadsheetId);
   const [tempSheetName, setTempSheetName] = useState(config.sheetName);
+  const [tempCopySettings, setTempCopySettings] = useState<CopyPriceSettings>(copySettings);
+
   const [syncMessage, setSyncMessage] = useState<string | null>(null);
 
   const loadStockData = async (forceConfig?: StockSheetConfig) => {
@@ -127,16 +133,16 @@ export const StockListView: React.FC<StockListViewProps> = ({
 
   const handleCopyProductLine = (p: StockProduct, e: React.MouseEvent) => {
     e.stopPropagation();
-    const text = generateProductSnippet(p);
+    const text = generateProductSnippet(p, copySettings);
     navigator.clipboard.writeText(text);
     setCopiedAllId(p.id);
-    onShowToast(`Rincian produk [${p.sku}] disalin!`, 'info');
+    onShowToast(`Rincian produk [${p.sku}] disalin sesuai pengaturan!`, 'info');
     setTimeout(() => setCopiedAllId(null), 1500);
   };
 
   const handleInsert = (p: StockProduct) => {
     if (onInsertToNote) {
-      onInsertToNote(generateProductHtmlSnippet(p), generateProductSnippet(p));
+      onInsertToNote(generateProductHtmlSnippet(p, copySettings), generateProductSnippet(p, copySettings));
       onShowToast(`Produk [${p.sku}] disisipkan ke catatan! ✨`, 'success');
     }
   };
@@ -152,6 +158,13 @@ export const StockListView: React.FC<StockListViewProps> = ({
     setShowConfigModal(false);
     onShowToast('Konfigurasi Google Sheet berhasil diperbarui!', 'success');
     loadStockData(newConfig);
+  };
+
+  const handleSaveCopySettings = () => {
+    saveStoredCopySettings(tempCopySettings);
+    setCopySettings(tempCopySettings);
+    setShowCopySettingsModal(false);
+    onShowToast('Pengaturan format "Salin Lengkap" berhasil disimpan! ⚙️', 'success');
   };
 
   const googleSheetUrl = `https://docs.google.com/spreadsheets/d/${config.spreadsheetId}/edit`;
@@ -179,6 +192,18 @@ export const StockListView: React.FC<StockListViewProps> = ({
           </div>
 
           <div className="flex items-center gap-1">
+            {/* Copy Settings Button */}
+            <button
+              onClick={() => {
+                setTempCopySettings({ ...copySettings });
+                setShowCopySettingsModal(true);
+              }}
+              className="p-1.5 text-slate-600 hover:text-emerald-700 hover:bg-emerald-50 rounded-lg transition-colors border border-slate-200 flex items-center gap-1"
+              title="Atur komponen harga yang disalin pada tombol Salin Lengkap"
+            >
+              <Settings2 className="w-3.5 h-3.5 text-emerald-600" />
+            </button>
+
             <button
               onClick={() => loadStockData()}
               disabled={isLoading}
@@ -187,6 +212,7 @@ export const StockListView: React.FC<StockListViewProps> = ({
             >
               <RefreshCw className={`w-3.5 h-3.5 ${isLoading ? 'animate-spin text-emerald-600' : ''}`} />
             </button>
+
             <a
               href={googleSheetUrl}
               target="_blank"
@@ -196,6 +222,7 @@ export const StockListView: React.FC<StockListViewProps> = ({
             >
               <ExternalLink className="w-3.5 h-3.5" />
             </a>
+
             <button
               onClick={() => {
                 setTempSpreadsheetId(config.spreadsheetId);
@@ -447,14 +474,14 @@ export const StockListView: React.FC<StockListViewProps> = ({
                 {/* Actions Footer */}
                 <div className="flex items-center justify-between pt-1 border-t border-slate-100">
                   <span className="text-[9.5px] text-slate-400">
-                    Klik harga di atas untuk salin cepat
+                    Klik harga untuk salin satuan
                   </span>
 
                   <div className="flex items-center gap-1">
                     <button
                       onClick={(e) => handleCopyProductLine(product, e)}
-                      className="px-2 py-1 bg-slate-50 hover:bg-slate-100 text-slate-700 rounded-lg text-[10px] font-semibold border border-slate-200 transition-colors flex items-center gap-1"
-                      title="Salin ringkasan lengkap info produk"
+                      className="px-2.5 py-1 bg-slate-50 hover:bg-slate-100 text-slate-700 rounded-lg text-[10px] font-semibold border border-slate-200 transition-colors flex items-center gap-1"
+                      title="Salin ringkasan lengkap sesuai pengaturan Anda"
                     >
                       {copiedAllId === product.id ? (
                         <>
@@ -472,11 +499,11 @@ export const StockListView: React.FC<StockListViewProps> = ({
                     {onInsertToNote && (
                       <button
                         onClick={() => handleInsert(product)}
-                        className="px-2 py-1 bg-emerald-600 hover:bg-emerald-700 text-white rounded-lg text-[10px] font-semibold transition-colors flex items-center gap-1 shadow-2xs"
+                        className="px-2.5 py-1 bg-emerald-600 hover:bg-emerald-700 text-white rounded-lg text-[10px] font-semibold transition-colors flex items-center gap-1 shadow-2xs"
                         title="Sisipkan ke editor catatan aktif"
                       >
                         <Plus className="w-3 h-3" />
-                        <span>+ Sisip ke Memo</span>
+                        <span>+ Sisip</span>
                       </button>
                     )}
 
@@ -496,6 +523,107 @@ export const StockListView: React.FC<StockListViewProps> = ({
           })
         )}
       </div>
+
+      {/* Copy Settings Modal */}
+      {showCopySettingsModal && (
+        <div className="fixed inset-0 z-50 bg-slate-900/40 backdrop-blur-xs flex items-center justify-center p-4">
+          <div className="bg-white rounded-2xl p-5 max-w-sm w-full shadow-xl border border-slate-200 flex flex-col gap-4">
+            <div className="flex items-center justify-between pb-2 border-b border-slate-100">
+              <div className="flex items-center gap-2">
+                <Settings2 className="w-4 h-4 text-emerald-600" />
+                <h3 className="font-bold text-slate-900 text-sm">Pengaturan Format "Salin Lengkap"</h3>
+              </div>
+              <button
+                onClick={() => setShowCopySettingsModal(false)}
+                className="text-slate-400 hover:text-slate-600 text-lg leading-none"
+              >
+                ×
+              </button>
+            </div>
+
+            <p className="text-[11px] text-slate-500 leading-relaxed">
+              Pilih komponen informasi dan harga apa saja yang ingin disertakan saat tombol <strong>Salin Lengkap</strong> atau <strong>+ Sisip</strong> diklik:
+            </p>
+
+            <div className="space-y-2 text-xs">
+              <label className="flex items-center gap-2.5 p-2 bg-slate-50 rounded-lg border border-slate-200 cursor-pointer hover:bg-slate-100 transition-colors">
+                <input
+                  type="checkbox"
+                  checked={tempCopySettings.includeSkuName}
+                  onChange={(e) => setTempCopySettings({ ...tempCopySettings, includeSkuName: e.target.checked })}
+                  className="rounded text-emerald-600 focus:ring-emerald-500 w-4 h-4"
+                />
+                <span className="font-semibold text-slate-800">SKU (Kol 1) & Nama Produk (Kol 3)</span>
+              </label>
+
+              <label className="flex items-center gap-2.5 p-2 bg-slate-50 rounded-lg border border-slate-200 cursor-pointer hover:bg-slate-100 transition-colors">
+                <input
+                  type="checkbox"
+                  checked={tempCopySettings.includeQty}
+                  onChange={(e) => setTempCopySettings({ ...tempCopySettings, includeQty: e.target.checked })}
+                  className="rounded text-emerald-600 focus:ring-emerald-500 w-4 h-4"
+                />
+                <span className="font-semibold text-slate-800">Qty (Kol 15) & Satuan (Kol 4)</span>
+              </label>
+
+              <label className="flex items-center gap-2.5 p-2 bg-slate-50 rounded-lg border border-slate-200 cursor-pointer hover:bg-slate-100 transition-colors">
+                <input
+                  type="checkbox"
+                  checked={tempCopySettings.includeEceran}
+                  onChange={(e) => setTempCopySettings({ ...tempCopySettings, includeEceran: e.target.checked })}
+                  className="rounded text-emerald-600 focus:ring-emerald-500 w-4 h-4"
+                />
+                <span className="font-semibold text-sky-800">Harga Eceran (Kol 11)</span>
+              </label>
+
+              <label className="flex items-center gap-2.5 p-2 bg-slate-50 rounded-lg border border-slate-200 cursor-pointer hover:bg-slate-100 transition-colors">
+                <input
+                  type="checkbox"
+                  checked={tempCopySettings.includeGrosir}
+                  onChange={(e) => setTempCopySettings({ ...tempCopySettings, includeGrosir: e.target.checked })}
+                  className="rounded text-emerald-600 focus:ring-emerald-500 w-4 h-4"
+                />
+                <span className="font-semibold text-emerald-800">Harga Grosir (Kol 12)</span>
+              </label>
+
+              <label className="flex items-center gap-2.5 p-2 bg-slate-50 rounded-lg border border-slate-200 cursor-pointer hover:bg-slate-100 transition-colors">
+                <input
+                  type="checkbox"
+                  checked={tempCopySettings.includePartai}
+                  onChange={(e) => setTempCopySettings({ ...tempCopySettings, includePartai: e.target.checked })}
+                  className="rounded text-emerald-600 focus:ring-emerald-500 w-4 h-4"
+                />
+                <span className="font-semibold text-purple-800">Harga Partai (Kol 13)</span>
+              </label>
+
+              <label className="flex items-center gap-2.5 p-2 bg-slate-50 rounded-lg border border-slate-200 cursor-pointer hover:bg-slate-100 transition-colors">
+                <input
+                  type="checkbox"
+                  checked={tempCopySettings.includeHpp}
+                  onChange={(e) => setTempCopySettings({ ...tempCopySettings, includeHpp: e.target.checked })}
+                  className="rounded text-emerald-600 focus:ring-emerald-500 w-4 h-4"
+                />
+                <span className="font-semibold text-slate-700">HPP (Kol 8)</span>
+              </label>
+            </div>
+
+            <div className="flex items-center justify-end gap-2 pt-2 border-t border-slate-100">
+              <button
+                onClick={() => setShowCopySettingsModal(false)}
+                className="px-3 py-1.5 text-xs text-slate-600 hover:bg-slate-100 rounded-lg"
+              >
+                Batal
+              </button>
+              <button
+                onClick={handleSaveCopySettings}
+                className="px-4 py-1.5 bg-emerald-600 hover:bg-emerald-700 text-white text-xs font-semibold rounded-lg shadow-2xs"
+              >
+                Simpan Preferensi
+              </button>
+            </div>
+          </div>
+        </div>
+      )}
 
       {/* Config Modal */}
       {showConfigModal && (

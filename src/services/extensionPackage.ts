@@ -1609,7 +1609,7 @@ export const EXTENSION_SIDEPANEL_HTML = `<!DOCTYPE html>
 <head>
   <meta charset="UTF-8">
   <meta name="viewport" content="width=device-width, initial-scale=1.0">
-  <title>QuickNotes Side Panel</title>
+  <title>Stok & QuickNotes Side Panel</title>
   <link rel="stylesheet" href="popup.css">
   <style>
     body {
@@ -1617,9 +1617,55 @@ export const EXTENSION_SIDEPANEL_HTML = `<!DOCTYPE html>
       height: 100vh !important;
       margin: 0;
       padding: 0;
+      background: #f8fafc;
+      font-family: system-ui, sans-serif;
     }
     .popup-container {
       height: 100vh;
+      display: flex;
+      flex-direction: column;
+    }
+    .panel-nav {
+      display: flex;
+      background: #e2e8f0;
+      padding: 4px;
+      gap: 4px;
+      border-bottom: 1px solid #cbd5e1;
+    }
+    .nav-tab {
+      flex: 1;
+      padding: 6px 10px;
+      font-size: 11px;
+      font-weight: 600;
+      border: none;
+      background: transparent;
+      border-radius: 6px;
+      cursor: pointer;
+      text-align: center;
+      color: #475569;
+    }
+    .nav-tab.active {
+      background: #ffffff;
+      color: #059669;
+      box-shadow: 0 1px 2px rgba(0,0,0,0.05);
+    }
+    .tab-content {
+      flex: 1;
+      overflow-y: auto;
+      display: none;
+      padding: 12px;
+    }
+    .tab-content.active {
+      display: flex;
+      flex-direction: column;
+    }
+    .stock-card {
+      background: #ffffff;
+      border: 1px solid #e2e8f0;
+      border-radius: 8px;
+      padding: 10px;
+      margin-bottom: 8px;
+      box-shadow: 0 1px 2px rgba(0,0,0,0.02);
     }
   </style>
 </head>
@@ -1627,56 +1673,92 @@ export const EXTENSION_SIDEPANEL_HTML = `<!DOCTYPE html>
   <div class="popup-container">
     <header class="popup-header">
       <div class="brand">
-        <span class="brand-icon">📌</span>
-        <span class="brand-title">QuickNotes Side Panel</span>
+        <span class="brand-icon">📦</span>
+        <span class="brand-title">Stok & QuickNotes Side Panel</span>
       </div>
       <div class="header-actions">
         <button id="btn-clip-page" class="icon-btn">🌐 Klip Web</button>
       </div>
     </header>
 
-    <div class="quick-input-card">
-      <input type="text" id="note-title-input" placeholder="Judul catatan Side Panel..." />
-      <div class="format-toolbar">
-        <button type="button" class="fmt-btn" data-cmd="bold" title="Tebal"><b>B</b></button>
-        <button type="button" class="fmt-btn" data-cmd="italic" title="Miring"><i>I</i></button>
-        <button type="button" class="fmt-btn" data-cmd="underline" title="Garis Bawah"><u>U</u></button>
-        <button type="button" class="fmt-btn" data-cmd="insertUnorderedList" title="List">• List</button>
-        <button type="button" class="fmt-btn" id="btn-insert-link" title="Link">🔗 Link</button>
+    <div class="panel-nav">
+      <button class="nav-tab active" data-target="tab-stock">📦 Stok Google Sheet</button>
+      <button class="nav-tab" data-target="tab-notes">📝 Catatan & Memo</button>
+    </div>
+
+    <!-- Tab 1: Stock Google Sheet -->
+    <div id="tab-stock" class="tab-content active">
+      <div style="margin-bottom: 10px;">
+        <input type="text" id="stock-search" placeholder="🔍 Cari SKU, Nama Produk, atau Satuan..." style="width: 100%; padding: 8px 12px; border: 1px solid #cbd5e1; border-radius: 8px; font-size: 12px; outline: none; box-sizing: border-box;" />
       </div>
-      <div id="note-content-editable" class="content-editable" contenteditable="true" placeholder="Tulis sambil membaca halaman web..."></div>
-      <div class="input-controls">
-        <div class="color-picker" id="color-picker">
-          <span class="color-dot color-amber active" data-color="amber"></span>
-          <span class="color-dot color-emerald" data-color="emerald"></span>
-          <span class="color-dot color-blue" data-color="blue"></span>
-          <span class="color-dot color-purple" data-color="purple"></span>
-          <span class="color-dot color-rose" data-color="rose"></span>
+      <div id="stock-products-list" style="display: flex; flex-direction: column; gap: 8px;">
+        <div class="stock-card">
+          <div style="font-weight: bold; font-size: 12px; color: #0f172a;">📦 [SKU-1001] Wireless Mouse Ergonomic RGB</div>
+          <div style="font-size: 11px; color: #475569; margin-top: 4px;">Qty: 38 pcs • Eceran: Rp 185.000</div>
         </div>
-        <div class="action-buttons">
-          <select id="note-category-select">
-            <option value="learning">📚 Belajar</option>
-            <option value="ideas">💡 Ide</option>
-            <option value="work">💼 Kerja</option>
-            <option value="clips">🌐 Klip</option>
-          </select>
-          <button id="btn-save-note" class="primary-btn">Simpan</button>
+        <div class="stock-card">
+          <div style="font-weight: bold; font-size: 12px; color: #0f172a;">📦 [SKU-1002] Mechanical Keyboard 75% RGB</div>
+          <div style="font-size: 11px; color: #475569; margin-top: 4px;">Qty: 12 unit • Eceran: Rp 590.000</div>
         </div>
       </div>
     </div>
 
-    <div class="search-bar">
-      <input type="text" id="search-input" placeholder="🔍 Cari catatan..." />
-      <span id="notes-counter" class="notes-count">0 Catatan</span>
+    <!-- Tab 2: Notes Editor -->
+    <div id="tab-notes" class="tab-content">
+      <div class="quick-input-card">
+        <input type="text" id="note-title-input" placeholder="Judul catatan Side Panel..." />
+        <div class="format-toolbar">
+          <button type="button" class="fmt-btn" data-cmd="bold" title="Tebal"><b>B</b></button>
+          <button type="button" class="fmt-btn" data-cmd="italic" title="Miring"><i>I</i></button>
+          <button type="button" class="fmt-btn" data-cmd="underline" title="Garis Bawah"><u>U</u></button>
+          <button type="button" class="fmt-btn" data-cmd="insertUnorderedList" title="List">• List</button>
+          <button type="button" class="fmt-btn" id="btn-insert-link" title="Link">🔗 Link</button>
+        </div>
+        <div id="note-content-editable" class="content-editable" contenteditable="true" placeholder="Tulis sambil membaca halaman web..."></div>
+        <div class="input-controls">
+          <div class="color-picker" id="color-picker">
+            <span class="color-dot color-amber active" data-color="amber"></span>
+            <span class="color-dot color-emerald" data-color="emerald"></span>
+            <span class="color-dot color-blue" data-color="blue"></span>
+            <span class="color-dot color-purple" data-color="purple"></span>
+            <span class="color-dot color-rose" data-color="rose"></span>
+          </div>
+          <div class="action-buttons">
+            <select id="note-category-select">
+              <option value="learning">📚 Belajar</option>
+              <option value="ideas">💡 Ide</option>
+              <option value="work">💼 Kerja</option>
+              <option value="clips">🌐 Klip</option>
+            </select>
+            <button id="btn-save-note" class="primary-btn">Simpan</button>
+          </div>
+        </div>
+      </div>
+
+      <div class="search-bar">
+        <input type="text" id="search-input" placeholder="🔍 Cari catatan..." />
+        <span id="notes-counter" class="notes-count">0 Catatan</span>
+      </div>
+
+      <div id="notes-list" class="notes-list"></div>
+
+      <footer class="popup-footer">
+        <button id="btn-export-json">💾 Backup JSON</button>
+        <button id="btn-clear-all" class="text-danger">Bersihkan</button>
+      </footer>
     </div>
-
-    <div id="notes-list" class="notes-list"></div>
-
-    <footer class="popup-footer">
-      <button id="btn-export-json">💾 Backup JSON</button>
-      <button id="btn-clear-all" class="text-danger">Bersihkan</button>
-    </footer>
   </div>
+  <script>
+    document.querySelectorAll('.nav-tab').forEach(btn => {
+      btn.addEventListener('click', () => {
+        document.querySelectorAll('.nav-tab').forEach(b => b.classList.remove('active'));
+        document.querySelectorAll('.tab-content').forEach(c => c.classList.remove('active'));
+        btn.classList.add('active');
+        const target = document.getElementById(btn.dataset.target);
+        if (target) target.classList.add('active');
+      });
+    });
+  </script>
   <script src="popup.js"></script>
 </body>
 </html>`;

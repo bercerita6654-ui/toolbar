@@ -95,7 +95,7 @@ export const ExtensionSidepanelView: React.FC<ExtensionSidepanelViewProps> = ({
   onTogglePin,
   onShowToast,
 }) => {
-  const [activeTab, setActiveTab] = useState<SidepanelTab>('editor');
+  const [activeTab, setActiveTab] = useState<SidepanelTab>('stock');
   const [editingNoteId, setEditingNoteId] = useState<string | null>(null);
   const [title, setTitle] = useState('');
   const [content, setContent] = useState('');

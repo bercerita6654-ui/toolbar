@@ -1,8 +1,9 @@
-import { StockProduct, StockSheetConfig, DEFAULT_STOCK_CONFIG } from '../types/stock';
+import { StockProduct, StockSheetConfig, DEFAULT_STOCK_CONFIG, CopyPriceSettings, DEFAULT_COPY_SETTINGS } from '../types/stock';
 import { getAccessToken } from './googleAuth';
 
 const STOCK_CACHE_KEY = 'quicknotes_stock_cache_v2';
 const STOCK_CONFIG_KEY = 'quicknotes_stock_config_v2';
+const COPY_SETTINGS_KEY = 'quicknotes_copy_settings_v1';
 
 export const SEED_STOCK_PRODUCTS: StockProduct[] = [
   {
@@ -20,8 +21,8 @@ export const SEED_STOCK_PRODUCTS: StockProduct[] = [
     formattedPartai: 'Rp 145.000',
     price: 185000,
     formattedPrice: 'Rp 185.000',
-    stock: 45,
-    rawStock: 45,
+    stock: 38,
+    rawStock: 38,
     status: 'in_stock',
     category: 'Aksesoris Komputer',
     notes: 'Garansi 1 tahun',
@@ -115,7 +116,7 @@ export const SEED_STOCK_PRODUCTS: StockProduct[] = [
     name: 'Aluminium Laptop Stand Foldable Portable Multi-Angle',
     unit: 'pcs',
     hpp: 75000,
-    formattedHpp: 'Rp 75000',
+    formattedHpp: 'Rp 75.000',
     hargaEceran: 135000,
     formattedEceran: 'Rp 135.000',
     hargaGrosir: 115000,
@@ -151,6 +152,26 @@ export function saveStoredStockConfig(config: Partial<StockSheetConfig>): void {
   }
 }
 
+export function getStoredCopySettings(): CopyPriceSettings {
+  try {
+    const raw = localStorage.getItem(COPY_SETTINGS_KEY);
+    if (!raw) return DEFAULT_COPY_SETTINGS;
+    return { ...DEFAULT_COPY_SETTINGS, ...JSON.parse(raw) };
+  } catch {
+    return DEFAULT_COPY_SETTINGS;
+  }
+}
+
+export function saveStoredCopySettings(settings: Partial<CopyPriceSettings>): void {
+  try {
+    const current = getStoredCopySettings();
+    const updated = { ...current, ...settings };
+    localStorage.setItem(COPY_SETTINGS_KEY, JSON.stringify(updated));
+  } catch (err) {
+    console.error('Failed to save copy settings:', err);
+  }
+}
+
 export function getCachedStockProducts(): StockProduct[] {
   try {
     const raw = localStorage.getItem(STOCK_CACHE_KEY);
@@ -173,19 +194,40 @@ export function cacheStockProducts(products: StockProduct[]): void {
   }
 }
 
-export function parseNumericValue(val: any): number {
-  if (typeof val === 'number') return isNaN(val) ? 0 : val;
-  if (!val) return 0;
-  const str = String(val).replace(/[^0-9.-]+/g, '');
-  const parsed = parseFloat(str);
-  return isNaN(parsed) ? 0 : parsed;
+export function parsePriceValue(val: any): number {
+  let num = 0;
+  if (typeof val === 'number') {
+    num = isNaN(val) ? 0 : val;
+  } else if (val) {
+    const str = String(val).replace(/[^0-9.-]+/g, '');
+    const parsed = parseFloat(str);
+    num = isNaN(parsed) ? 0 : parsed;
+  }
+  // If price in sheet is written in thousands (ribuan, e.g. 20 means 20.000, 185 means 185.000), multiply by 1000
+  if (num > 0 && num < 1000) {
+    return num * 1000;
+  }
+  return num;
+}
+
+export function parseQtyValue(val: any): number {
+  let num = 0;
+  if (typeof val === 'number') {
+    num = isNaN(val) ? 0 : val;
+  } else if (val) {
+    const str = String(val).replace(/[^0-9.-]+/g, '');
+    const parsed = parseFloat(str);
+    num = isNaN(parsed) ? 0 : parsed;
+  }
+  // Qty must NEVER be multiplied by 1000 (keep original sheet quantity like 38, 4, 12)
+  return num;
 }
 
 export function formatRupiah(num: number | string | undefined | null): string {
   if (num === undefined || num === null || num === '') return 'Rp 0';
   if (typeof num === 'string') {
     if (num.toLowerCase().includes('rp')) return num.trim();
-    const parsed = parseNumericValue(num);
+    const parsed = parsePriceValue(num);
     num = parsed;
   }
   return new Intl.NumberFormat('id-ID', {
@@ -206,15 +248,6 @@ export async function fetchStockProductsFromSheet(config?: StockSheetConfig): Pr
   const spreadsheetId = currentConfig.spreadsheetId.trim() || DEFAULT_STOCK_CONFIG.spreadsheetId;
   const sheetName = currentConfig.sheetName.trim() || DEFAULT_STOCK_CONFIG.sheetName;
 
-  // Exact 0-indexed column mapping based on user specifications:
-  // SKU: Kolom 1 -> Index 0
-  // Nama Produk: Kolom 3 -> Index 2
-  // Unit: Kolom 4 -> Index 3
-  // HPP: Kolom 8 -> Index 7
-  // Eceran: Kolom 11 -> Index 10
-  // Grosir: Kolom 12 -> Index 11
-  // Partai: Kolom 13 -> Index 12
-  // Qty (Stok): Kolom 15 -> Index 14
   const map = {
     sku: 0,
     name: 2,
@@ -240,7 +273,6 @@ export async function fetchStockProductsFromSheet(config?: StockSheetConfig): Pr
   }
 
   try {
-    // Fetch columns A through P (A1:P1000)
     const range = encodeURIComponent(`'${sheetName}'!A1:Z1000`);
     const url = `https://sheets.googleapis.com/v4/spreadsheets/${spreadsheetId}/values/${range}`;
 
@@ -268,7 +300,6 @@ export async function fetchStockProductsFromSheet(config?: StockSheetConfig): Pr
       throw new Error(`Sheet "${sheetName}" kosong atau belum memiliki data baris.`);
     }
 
-    // Determine if first row is header
     const firstRow = rows[0].map((c: any) => String(c || '').trim().toLowerCase());
     const isFirstRowHeader = firstRow.some((c: string) => 
       c.includes('sku') || c.includes('nama') || c.includes('produk') || c.includes('qty') || c.includes('stok') || c.includes('eceran')
@@ -283,39 +314,23 @@ export async function fetchStockProductsFromSheet(config?: StockSheetConfig): Pr
         continue;
       }
 
-      // 1. SKU (Kolom 1 / index 0)
       const rawSku = row[map.sku] ? String(row[map.sku]).trim() : '';
-      
-      // 2. Nama Produk (Kolom 3 / index 2)
       const rawName = row[map.name] ? String(row[map.name]).trim() : '';
 
-      // Skip row if both SKU and Name are empty
       if (!rawSku && !rawName) continue;
 
       const finalSku = rawSku || `ITEM-${(i + 1).toString().padStart(3, '0')}`;
       const finalName = rawName || `Produk ${finalSku}`;
-
-      // 3. Unit / Satuan (Kolom 4 / index 3)
       const rawUnit = row[map.unit] ? String(row[map.unit]).trim() : 'pcs';
 
-      // 4. HPP (Kolom 8 / index 7)
-      const hppNum = parseNumericValue(row[map.hpp]);
-
-      // 5. Harga Eceran (Kolom 11 / index 10)
-      const eceranNum = parseNumericValue(row[map.eceran]);
-
-      // 6. Harga Grosir (Kolom 12 / index 11)
-      const grosirNum = parseNumericValue(row[map.grosir]);
-
-      // 7. Harga Partai (Kolom 13 / index 12)
-      const partaiNum = parseNumericValue(row[map.partai]);
-
-      // Primary display price is Eceran (or Grosir/HPP if Eceran is 0)
+      const hppNum = parsePriceValue(row[map.hpp]);
+      const eceranNum = parsePriceValue(row[map.eceran]);
+      const grosirNum = parsePriceValue(row[map.grosir]);
+      const partaiNum = parsePriceValue(row[map.partai]);
       const primaryPrice = eceranNum || grosirNum || partaiNum || hppNum || 0;
 
-      // 8. Qty / Stok (Kolom 15 / index 14)
       const rawQty = row[map.qty];
-      const stockNum = parseNumericValue(rawQty);
+      const stockNum = parseQtyValue(rawQty);
 
       let status: 'in_stock' | 'low_stock' | 'out_of_stock' = 'in_stock';
       if (stockNum <= 0) {
@@ -342,7 +357,7 @@ export async function fetchStockProductsFromSheet(config?: StockSheetConfig): Pr
         stock: stockNum,
         rawStock: rawQty !== undefined ? rawQty : stockNum,
         status,
-        category: row[1] ? String(row[1]).trim() : undefined, // Kolom 2 optional for category
+        category: row[1] ? String(row[1]).trim() : undefined,
       });
     }
 
@@ -371,29 +386,67 @@ export async function fetchStockProductsFromSheet(config?: StockSheetConfig): Pr
   }
 }
 
-export function generateProductSnippet(product: StockProduct): string {
-  const stockText = product.status === 'out_of_stock' ? 'HABIS' : product.status === 'low_stock' ? `KRITIS (${product.stock} ${product.unit})` : `READY (${product.stock} ${product.unit})`;
-  let text = `📦 *[${product.sku}] ${product.name}*\n`;
-  text += `• Qty: ${product.stock} ${product.unit} [${stockText}]\n`;
-  text += `• Eceran: ${product.formattedEceran}\n`;
-  if (product.hargaGrosir) text += `• Grosir: ${product.formattedGrosir}\n`;
-  if (product.hargaPartai) text += `• Partai: ${product.formattedPartai}\n`;
-  if (product.hpp) text += `• HPP: ${product.formattedHpp}\n`;
+export function generateProductSnippet(product: StockProduct, settings?: CopyPriceSettings): string {
+  const currentSettings = settings || getStoredCopySettings();
+  let text = '';
+
+  if (currentSettings.includeSkuName) {
+    text += `📦 *[${product.sku}] ${product.name}*\n`;
+  }
+
+  if (currentSettings.includeQty) {
+    const stockText = product.status === 'out_of_stock' ? 'HABIS' : product.status === 'low_stock' ? `KRITIS (${product.stock} ${product.unit})` : `READY (${product.stock} ${product.unit})`;
+    text += `• Qty: ${product.stock} ${product.unit} [${stockText}]\n`;
+  }
+
+  if (currentSettings.includeEceran && product.hargaEceran > 0) {
+    text += `• Eceran: ${product.formattedEceran}\n`;
+  }
+
+  if (currentSettings.includeGrosir && product.hargaGrosir && product.hargaGrosir > 0) {
+    text += `• Grosir: ${product.formattedGrosir}\n`;
+  }
+
+  if (currentSettings.includePartai && product.hargaPartai && product.hargaPartai > 0) {
+    text += `• Partai: ${product.formattedPartai}\n`;
+  }
+
+  if (currentSettings.includeHpp && product.hpp && product.hpp > 0) {
+    text += `• HPP: ${product.formattedHpp}\n`;
+  }
+
   return text.trim();
 }
 
-export function generateProductHtmlSnippet(product: StockProduct): string {
+export function generateProductHtmlSnippet(product: StockProduct, settings?: CopyPriceSettings): string {
+  const currentSettings = settings || getStoredCopySettings();
   const badgeColor = product.status === 'out_of_stock' ? '#ef4444' : product.status === 'low_stock' ? '#f59e0b' : '#10b981';
   const badgeText = product.status === 'out_of_stock' ? 'HABIS' : product.status === 'low_stock' ? 'KRITIS' : 'READY';
 
-  return `<div style="background:#f8fafc; border:1px solid #e2e8f0; border-left:4px solid ${badgeColor}; padding:10px 14px; border-radius:8px; margin:8px 0; font-family:sans-serif;">
-    <div style="font-weight:bold; color:#0f172a; font-size:13px;">📦 [${product.sku}] ${product.name}</div>
-    <div style="font-size:11px; color:#334155; margin-top:6px; display:flex; flex-wrap:wrap; gap:10px;">
-      <span><strong>Stok (Qty):</strong> ${product.stock} ${product.unit} <span style="color:${badgeColor}; font-weight:bold;">(${badgeText})</span></span>
-      <span><strong>Eceran:</strong> <span style="color:#0284c7; font-weight:bold;">${product.formattedEceran}</span></span>
-      ${product.hargaGrosir ? `<span><strong>Grosir:</strong> <span style="color:#059669; font-weight:bold;">${product.formattedGrosir}</span></span>` : ''}
-      ${product.hargaPartai ? `<span><strong>Partai:</strong> <span style="color:#7c3aed; font-weight:bold;">${product.formattedPartai}</span></span>` : ''}
-      ${product.hpp ? `<span style="color:#64748b; font-size:10px;">(HPP: ${product.formattedHpp})</span>` : ''}
-    </div>
-  </div><p></p>`;
+  let html = `<div style="background:#f8fafc; border:1px solid #e2e8f0; border-left:4px solid ${badgeColor}; padding:10px 14px; border-radius:8px; margin:8px 0; font-family:sans-serif;">`;
+  
+  if (currentSettings.includeSkuName) {
+    html += `<div style="font-weight:bold; color:#0f172a; font-size:13px;">📦 [${product.sku}] ${product.name}</div>`;
+  }
+
+  html += `<div style="font-size:11px; color:#334155; margin-top:6px; display:flex; flex-wrap:wrap; gap:10px;">`;
+  
+  if (currentSettings.includeQty) {
+    html += `<span><strong>Qty:</strong> ${product.stock} ${product.unit} <span style="color:${badgeColor}; font-weight:bold;">(${badgeText})</span></span>`;
+  }
+  if (currentSettings.includeEceran && product.hargaEceran > 0) {
+    html += `<span><strong>Eceran:</strong> <span style="color:#0284c7; font-weight:bold;">${product.formattedEceran}</span></span>`;
+  }
+  if (currentSettings.includeGrosir && product.hargaGrosir && product.hargaGrosir > 0) {
+    html += `<span><strong>Grosir:</strong> <span style="color:#059669; font-weight:bold;">${product.formattedGrosir}</span></span>`;
+  }
+  if (currentSettings.includePartai && product.hargaPartai && product.hargaPartai > 0) {
+    html += `<span><strong>Partai:</strong> <span style="color:#7c3aed; font-weight:bold;">${product.formattedPartai}</span></span>`;
+  }
+  if (currentSettings.includeHpp && product.hpp && product.hpp > 0) {
+    html += `<span style="color:#64748b; font-size:10px;">(HPP: ${product.formattedHpp})</span>`;
+  }
+
+  html += `</div></div><p></p>`;
+  return html;
 }

@@ -50,7 +50,7 @@ export const ExtensionPopupView: React.FC<ExtensionPopupViewProps> = ({
   const [reminderAt, setReminderAt] = useState<number | null>(null);
   const [search, setSearch] = useState('');
   const [copiedId, setCopiedId] = useState<string | null>(null);
-  const [activeTab, setActiveTab] = useState<'all' | 'calendar' | 'stock' | 'clips' | 'todo'>('all');
+  const [activeTab, setActiveTab] = useState<'all' | 'calendar' | 'stock' | 'clips' | 'todo'>('stock');
 
   // Mini Calendar State
   const [calendarDate, setCalendarDate] = useState<Date>(new Date());
