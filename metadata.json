@@ -1,0 +1,6 @@
+{
+  "name": "QuickNotes Chrome Extension & Web Studio",
+  "description": "Ekstensi Google Chrome modern untuk membuat catatan cepat, web clipper, todo checklist, pencarian instan, dan export ekstensi Chrome Manifest V3 siap pakai.",
+  "requestFramePermissions": [],
+  "majorCapabilities": ["MAJOR_CAPABILITY_SERVER_SIDE_GEMINI_API"]
+}
