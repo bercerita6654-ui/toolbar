@@ -52,6 +52,23 @@ export const Header: React.FC<HeaderProps> = ({
       <div className="flex items-center gap-2">
         <nav className="hidden lg:flex items-center gap-1 bg-slate-100 p-1 rounded-xl border border-slate-200/80">
           <button
+            onClick={() => onSelectMode('sidepanel')}
+            className={`px-3 py-1.5 text-xs font-medium rounded-lg transition-colors whitespace-nowrap flex items-center gap-1.5 ${
+              currentMode === 'sidepanel'
+                ? 'bg-sky-600 text-white shadow-xs font-bold'
+                : 'text-slate-700 hover:text-slate-900 bg-white/70 font-semibold'
+            }`}
+          >
+            <span>📌</span>
+            <span>Chrome Side Panel</span>
+            <span className={`text-[9px] px-1.5 py-0.2 rounded-full font-bold uppercase tracking-wider ${
+              currentMode === 'sidepanel' ? 'bg-white text-sky-700' : 'bg-sky-100 text-sky-700'
+            }`}>
+              Utama
+            </span>
+          </button>
+
+          <button
             onClick={() => onSelectMode('dashboard')}
             className={`px-3 py-1.5 text-xs font-medium rounded-lg transition-colors whitespace-nowrap ${
               currentMode === 'dashboard'
@@ -91,17 +108,6 @@ export const Header: React.FC<HeaderProps> = ({
           </button>
 
           <button
-            onClick={() => onSelectMode('sidepanel')}
-            className={`px-3 py-1.5 text-xs font-medium rounded-lg transition-colors whitespace-nowrap ${
-              currentMode === 'sidepanel'
-                ? 'bg-white text-slate-900 shadow-xs font-semibold'
-                : 'text-slate-600 hover:text-slate-900'
-            }`}
-          >
-            Chrome Side Panel
-          </button>
-
-          <button
             onClick={() => onSelectMode('browser_clipper_demo')}
             className={`px-3 py-1.5 text-xs font-medium rounded-lg transition-colors whitespace-nowrap ${
               currentMode === 'browser_clipper_demo'
@@ -109,7 +115,7 @@ export const Header: React.FC<HeaderProps> = ({
                 : 'text-slate-600 hover:text-slate-900'
             }`}
           >
-            Web Clipper Demo
+            Web Clipper & Aturan Situs
           </button>
 
           <button

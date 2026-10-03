@@ -13,9 +13,10 @@ const app = getApps().length > 0 ? getApp() : initializeApp(firebaseConfig);
 export const auth = getAuth(app);
 
 const provider = new GoogleAuthProvider();
-// Request Google Drive scopes
+// Request Google Drive & Google Sheets scopes
 provider.addScope('https://www.googleapis.com/auth/drive.file');
 provider.addScope('https://www.googleapis.com/auth/drive.readonly');
+provider.addScope('https://www.googleapis.com/auth/spreadsheets.readonly');
 provider.setCustomParameters({
   prompt: 'select_account',
 });

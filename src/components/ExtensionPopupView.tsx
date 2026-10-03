@@ -1,6 +1,8 @@
 import React, { useState, useMemo } from 'react';
 import { Note, NoteColor } from '../types/note';
 import { ReminderPicker } from './ReminderPicker';
+import { StockListView } from './StockListView';
+import { generateProductSnippet } from '../services/stockService';
 import { formatReminderText } from '../services/reminderService';
 import { 
   Pin, 
@@ -20,6 +22,7 @@ import {
   ChevronRight,
   Plus,
   Clock,
+  Package,
   X
 } from 'lucide-react';
 
@@ -47,7 +50,7 @@ export const ExtensionPopupView: React.FC<ExtensionPopupViewProps> = ({
   const [reminderAt, setReminderAt] = useState<number | null>(null);
   const [search, setSearch] = useState('');
   const [copiedId, setCopiedId] = useState<string | null>(null);
-  const [activeTab, setActiveTab] = useState<'all' | 'calendar' | 'clips' | 'todo'>('all');
+  const [activeTab, setActiveTab] = useState<'all' | 'calendar' | 'stock' | 'clips' | 'todo'>('all');
 
   // Mini Calendar State
   const [calendarDate, setCalendarDate] = useState<Date>(new Date());
@@ -426,6 +429,17 @@ export const ExtensionPopupView: React.FC<ExtensionPopupViewProps> = ({
                 </button>
 
                 <button
+                  onClick={() => setActiveTab('stock')}
+                  className={`px-2 py-0.5 rounded transition-colors flex items-center gap-1 whitespace-nowrap ${
+                    activeTab === 'stock' ? 'bg-emerald-600 text-white font-bold shadow-2xs' : 'text-emerald-700 hover:text-emerald-900 font-semibold'
+                  }`}
+                  title="Lihat Stok Produk dari Google Sheet"
+                >
+                  <Package className="w-3 h-3" />
+                  <span>Stok</span>
+                </button>
+
+                <button
                   onClick={() => setActiveTab('clips')}
                   className={`px-2 py-0.5 rounded transition-colors whitespace-nowrap ${
                     activeTab === 'clips' ? 'bg-white text-sky-700 font-semibold border border-slate-200 shadow-2xs' : 'text-slate-600 hover:text-slate-900'
@@ -444,7 +458,7 @@ export const ExtensionPopupView: React.FC<ExtensionPopupViewProps> = ({
                 </button>
               </div>
 
-              {activeTab !== 'calendar' && (
+              {activeTab !== 'calendar' && activeTab !== 'stock' && (
                 <div className="relative w-24 ml-1">
                   <Search className="w-2.5 h-2.5 absolute left-1.5 top-2 text-slate-400" />
                   <input
@@ -643,8 +657,26 @@ export const ExtensionPopupView: React.FC<ExtensionPopupViewProps> = ({
                   )}
                 </div>
               </div>
+            ) : activeTab === 'stock' ? (
+              /* TAB CONTENT: 2. STOCK LIST VIEWER FROM GOOGLE SHEET */
+              <div className="flex-1 overflow-hidden bg-slate-50 flex flex-col">
+                <StockListView
+                  compact={true}
+                  onInsertToNote={(snippetHtml, snippetText) => {
+                    setContent((prev) => (prev ? `${prev}\n\n${snippetText}` : snippetText));
+                    setActiveTab('all');
+                  }}
+                  onCreateNoteFromProduct={(product) => {
+                    setTitle(`[${product.sku}] ${product.name}`);
+                    setContent(generateProductSnippet(product));
+                    setCategory('work');
+                    setActiveTab('all');
+                  }}
+                  onShowToast={onShowToast}
+                />
+              </div>
             ) : (
-              /* TAB CONTENT: 2. STANDARD NOTES LIST SCROLL AREA */
+              /* TAB CONTENT: 3. STANDARD NOTES LIST SCROLL AREA */
               <div className="flex-1 overflow-y-auto p-3 space-y-2 bg-slate-50/60">
                 {filteredNotes.length === 0 ? (
                   <div className="h-full flex flex-col items-center justify-center text-center p-6 text-slate-400 text-xs">

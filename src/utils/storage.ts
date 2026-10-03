@@ -45,10 +45,10 @@ export function saveStoredNotes(notes: Note[]): void {
 export function getLastViewMode(): ViewMode {
   try {
     const mode = localStorage.getItem(LAST_VIEW_MODE_KEY) as ViewMode;
-    const validModes: ViewMode[] = ['dashboard', 'calendar', 'extension_popup', 'sidepanel', 'browser_clipper_demo', 'extension_builder'];
-    return validModes.includes(mode) ? mode : 'dashboard';
+    const validModes: ViewMode[] = ['sidepanel', 'dashboard', 'calendar', 'extension_popup', 'browser_clipper_demo', 'extension_builder'];
+    return validModes.includes(mode) ? mode : 'sidepanel';
   } catch {
-    return 'dashboard';
+    return 'sidepanel';
   }
 }
 
