@@ -42,6 +42,7 @@ export interface Category {
 export type ViewMode = 
   | 'dashboard' 
   | 'calendar'
+  | 'stock'
   | 'extension_popup' 
   | 'sidepanel' 
   | 'browser_clipper_demo' 

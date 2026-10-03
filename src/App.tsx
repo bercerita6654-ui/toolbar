@@ -37,6 +37,8 @@ import { ExtensionPopupView } from './components/ExtensionPopupView';
 import { ExtensionSidepanelView } from './components/ExtensionSidepanelView';
 import { BrowserClipperDemo } from './components/BrowserClipperDemo';
 import { ExtensionBuilderView } from './components/ExtensionBuilderView';
+import { StockListView } from './components/StockListView';
+import { generateProductHtmlSnippet } from './services/stockService';
 import { NoteModal } from './components/NoteModal';
 import { VoiceRecorderModal } from './components/VoiceRecorderModal';
 import { GoogleDriveSyncModal } from './components/GoogleDriveSyncModal';
@@ -493,8 +495,41 @@ export default function App() {
           />
         )}
 
-        {currentMode === 'extension_builder' && (
-          <ExtensionBuilderView onShowToast={showToast} />
+        {currentMode === 'stock' && (
+          <div className="flex-1 max-w-6xl w-full mx-auto p-4 md:p-6 overflow-hidden flex flex-col">
+            <div className="bg-white rounded-2xl border border-slate-200 overflow-hidden shadow-sm flex-1 flex flex-col">
+              <StockListView
+                compact={false}
+                onInsertToNote={(snippetHtml, snippetText) => {
+                  handleSaveNote({
+                    id: 'note_' + Date.now(),
+                    title: 'Catatan Produk & Stok',
+                    content: snippetHtml,
+                    category: 'work',
+                    noteType: 'standard',
+                    color: 'emerald',
+                    createdAt: Date.now(),
+                    updatedAt: Date.now(),
+                  });
+                  showToast('Produk berhasil disimpan ke catatan baru! 📦', 'success');
+                }}
+                onCreateNoteFromProduct={(product) => {
+                  handleSaveNote({
+                    id: 'note_' + Date.now(),
+                    title: `[${product.sku}] ${product.name}`,
+                    content: generateProductHtmlSnippet(product),
+                    category: 'work',
+                    noteType: 'standard',
+                    color: 'blue',
+                    createdAt: Date.now(),
+                    updatedAt: Date.now(),
+                  });
+                  showToast(`Catatan khusus produk ${product.sku} dibuat! 📝`, 'success');
+                }}
+                onShowToast={showToast}
+              />
+            </div>
+          </div>
         )}
       </main>
 

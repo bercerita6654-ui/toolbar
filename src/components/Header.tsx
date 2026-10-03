@@ -1,6 +1,6 @@
 import React from 'react';
 import { ViewMode } from '../types/note';
-import { Download, Plus, Search, Cloud, RefreshCw, CheckCircle2, AlertCircle, Calendar } from 'lucide-react';
+import { Download, Plus, Search, Cloud, RefreshCw, CheckCircle2, AlertCircle, Calendar, Package } from 'lucide-react';
 import { SyncStatus } from '../services/cloudAutoSync';
 
 interface HeaderProps {
@@ -94,6 +94,18 @@ export const Header: React.FC<HeaderProps> = ({
                 {remindersCount}
               </span>
             )}
+          </button>
+
+          <button
+            onClick={() => onSelectMode('stock')}
+            className={`px-3 py-1.5 text-xs font-medium rounded-lg transition-colors whitespace-nowrap flex items-center gap-1.5 ${
+              currentMode === 'stock'
+                ? 'bg-emerald-600 text-white shadow-xs font-bold'
+                : 'text-emerald-700 hover:text-emerald-900 font-semibold bg-emerald-50/80 border border-emerald-200'
+            }`}
+          >
+            <Package className="w-3.5 h-3.5" />
+            <span>Stok Google Sheet</span>
           </button>
 
           <button
